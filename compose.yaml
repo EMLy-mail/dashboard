@@ -1,0 +1,13 @@
+services:
+  dashboard:
+    build: ./
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-emly}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-emly_bugreports}
+    volumes:
+      - ./logs/dashboard:/app/logs
+    restart: unless-stopped
+    
