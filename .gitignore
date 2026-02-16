@@ -136,3 +136,10 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# IDEs
+.idea/
+.vscode/
+
+# Bun lockfile
+bun.lockb
+bun.lock
