@@ -1,8 +1,6 @@
 import type { LayoutServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { bugReports } from '$lib/schema';
-import { eq, count } from 'drizzle-orm';
+import { countNewReports } from '$lib/server/api';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	if (url.pathname === '/login') {
@@ -13,13 +11,10 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		redirect(302, '/login');
 	}
 
-	const [result] = await db
-		.select({ count: count() })
-		.from(bugReports)
-		.where(eq(bugReports.status, 'new'));
+	const newCount = await countNewReports().catch(() => 0);
 
 	return {
-		newCount: result.count,
+		newCount,
 		user: locals.user
 	};
 };

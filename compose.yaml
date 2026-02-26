@@ -1,6 +1,8 @@
 services:
   dashboard:
     build: ./
+    ports:
+      - "3000:3000"
     environment:
       MYSQL_HOST: ${MYSQL_HOST:-mysql}
       MYSQL_PORT: ${MYSQL_PORT:-3306}

@@ -1,8 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/server/db';
-import { bugReportFiles } from '$lib/schema';
-import { eq, and } from 'drizzle-orm';
+import { getFile, ApiError } from '$lib/server/api';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const reportId = Number(params.id);
@@ -10,19 +8,25 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	if (isNaN(reportId) || isNaN(fileId)) throw error(400, 'Invalid ID');
 
-	const [file] = await db
-		.select()
-		.from(bugReportFiles)
-		.where(and(eq(bugReportFiles.id, fileId), eq(bugReportFiles.report_id, reportId)))
-		.limit(1);
+	let upstream: Response;
+	try {
+		upstream = await getFile(reportId, fileId);
+	} catch (err) {
+		if (err instanceof ApiError && err.status === 404) throw error(404, 'File not found');
+		throw error(500, 'Failed to fetch file');
+	}
 
-	if (!file) throw error(404, 'File not found');
+	const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
+	const contentDisposition =
+		upstream.headers.get('content-disposition') ?? 'inline';
 
-	return new Response(new Uint8Array(file.data), {
+	return new Response(upstream.body, {
 		headers: {
-			'Content-Type': file.mime_type,
-			'Content-Disposition': `inline; filename="${file.filename}"`,
-			'Content-Length': String(file.file_size)
+			'Content-Type': contentType,
+			'Content-Disposition': contentDisposition,
+			...(upstream.headers.get('content-length')
+				? { 'Content-Length': upstream.headers.get('content-length')! }
+				: {})
 		}
 	});
 };

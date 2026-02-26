@@ -1,6 +1,7 @@
 import type { Actions, PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { lucia } from '$lib/server/auth';
+import { SESSION_COOKIE_NAME } from '$lib/server/auth';
+import { logout } from '$lib/server/api';
 
 export const load: PageServerLoad = async () => {
 	redirect(302, '/');
@@ -12,12 +13,11 @@ export const actions: Actions = {
 			redirect(302, '/login');
 		}
 
-		await lucia.invalidateSession(locals.session.id);
-		const sessionCookie = lucia.createBlankSessionCookie();
-		cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
-			...sessionCookie.attributes
+		await logout(locals.session).catch(() => {
+			// Best-effort: clear cookie regardless
 		});
+
+		cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
 
 		redirect(302, '/login');
 	}

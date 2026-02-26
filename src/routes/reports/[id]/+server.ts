@@ -1,8 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/server/db';
-import { bugReports } from '$lib/schema';
-import { eq } from 'drizzle-orm';
+import { updateStatus, deleteReport, ApiError } from '$lib/server/api';
+import type { BugReportStatus } from '$lib/server/api';
 
 export const PATCH: RequestHandler = async ({ params, request }) => {
 	const id = Number(params.id);
@@ -15,12 +14,12 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 		throw error(400, 'Invalid status');
 	}
 
-	const [result] = await db
-		.update(bugReports)
-		.set({ status })
-		.where(eq(bugReports.id, id));
-
-	if (result.affectedRows === 0) throw error(404, 'Report not found');
+	try {
+		await updateStatus(id, status as BugReportStatus);
+	} catch (err) {
+		if (err instanceof ApiError && err.status === 404) throw error(404, 'Report not found');
+		throw error(500, 'Failed to update status');
+	}
 
 	return json({ success: true });
 };
@@ -29,11 +28,12 @@ export const DELETE: RequestHandler = async ({ params }) => {
 	const id = Number(params.id);
 	if (isNaN(id)) throw error(400, 'Invalid report ID');
 
-	const [result] = await db
-		.delete(bugReports)
-		.where(eq(bugReports.id, id));
-
-	if (result.affectedRows === 0) throw error(404, 'Report not found');
+	try {
+		await deleteReport(id);
+	} catch (err) {
+		if (err instanceof ApiError && err.status === 404) throw error(404, 'Report not found');
+		throw error(500, 'Failed to delete report');
+	}
 
 	return json({ success: true });
 };

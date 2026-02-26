@@ -1,10 +1,13 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { hash } from '@node-rs/argon2';
-import { generateIdFromEntropySize } from 'lucia';
-import { db } from '$lib/server/db';
-import { userTable } from '$lib/schema';
-import { eq } from 'drizzle-orm';
+import {
+	listUsers,
+	createUser,
+	updateUser,
+	resetPassword,
+	deleteUser,
+	ApiError
+} from '$lib/server/api';
 
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 255;
@@ -28,32 +31,12 @@ function validatePassword(password: string): string | null {
 	return null;
 }
 
-async function hashPassword(password: string): Promise<string> {
-	return hash(password, {
-		memoryCost: 19456,
-		timeCost: 2,
-		outputLen: 32,
-		parallelism: 1
-	});
-}
-
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user || locals.user.role !== 'admin') {
 		redirect(302, '/');
 	}
 
-	const users = await db
-		.select({
-			id: userTable.id,
-			username: userTable.username,
-			displayname: userTable.displayname,
-			role: userTable.role,
-			enabled: userTable.enabled,
-			createdAt: userTable.createdAt
-		})
-		.from(userTable)
-		.orderBy(userTable.createdAt);
-
+	const users = await listUsers();
 	return { users };
 };
 
@@ -101,27 +84,15 @@ export const actions: Actions = {
 			return fail(400, { message: 'Invalid role' });
 		}
 
-		// Check if username already exists
-		const [existing] = await db
-			.select({ id: userTable.id })
-			.from(userTable)
-			.where(eq(userTable.username, username))
-			.limit(1);
-
-		if (existing) {
-			return fail(400, { message: 'Username already exists' });
+		try {
+			await createUser({ username, displayname, password, role: role as 'admin' | 'user' });
+		} catch (err) {
+			if (err instanceof ApiError) {
+				if (err.status === 409) return fail(400, { message: 'Username already exists' });
+				return fail(500, { message: 'Server error: ' + err.message });
+			}
+			return fail(500, { message: 'Internal server error' });
 		}
-
-		const passwordHash = await hashPassword(password);
-		const userId = generateIdFromEntropySize(10);
-
-		await db.insert(userTable).values({
-			id: userId,
-			username,
-			displayname,
-			passwordHash,
-			role: role as 'admin' | 'user'
-		});
 
 		return { success: true };
 	},
@@ -139,7 +110,12 @@ export const actions: Actions = {
 			return fail(400, { message: 'Invalid input' });
 		}
 
-		await db.update(userTable).set({ displayname }).where(eq(userTable.id, userId));
+		try {
+			await updateUser(userId, { displayname });
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 404) return fail(404, { message: 'User not found' });
+			return fail(500, { message: 'Internal server error' });
+		}
 
 		return { success: true };
 	},
@@ -155,6 +131,7 @@ export const actions: Actions = {
 		if (typeof userId === 'string' && userId === locals.user.id) {
 			return fail(400, { message: 'Cannot reset your own password from here' });
 		}
+
 		const newPassword = formData.get('newPassword');
 		const confirmPassword = formData.get('confirmPassword');
 
@@ -175,9 +152,12 @@ export const actions: Actions = {
 			return fail(400, { message: passwordError });
 		}
 
-		const passwordHash = await hashPassword(newPassword);
-
-		await db.update(userTable).set({ passwordHash }).where(eq(userTable.id, userId));
+		try {
+			await resetPassword(userId, newPassword);
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 404) return fail(404, { message: 'User not found' });
+			return fail(500, { message: 'Internal server error' });
+		}
 
 		return { success: true };
 	},
@@ -194,18 +174,19 @@ export const actions: Actions = {
 			return fail(400, { message: 'Invalid input' });
 		}
 
-		// Cannot disable yourself
 		if (userId === locals.user.id) {
 			return fail(400, { message: 'Cannot disable your own account' });
 		}
 
-		// Cannot disable other admins
-		const [targetUser] = await db
-			.select({ role: userTable.role, enabled: userTable.enabled })
-			.from(userTable)
-			.where(eq(userTable.id, userId))
-			.limit(1);
+		// Fetch current user list to find the target user's current enabled state and role
+		let users;
+		try {
+			users = await listUsers();
+		} catch {
+			return fail(500, { message: 'Internal server error' });
+		}
 
+		const targetUser = users.find((u) => u.id === userId);
 		if (!targetUser) {
 			return fail(404, { message: 'User not found' });
 		}
@@ -214,10 +195,12 @@ export const actions: Actions = {
 			return fail(400, { message: 'Cannot disable an admin user' });
 		}
 
-		await db
-			.update(userTable)
-			.set({ enabled: !targetUser.enabled })
-			.where(eq(userTable.id, userId));
+		try {
+			await updateUser(userId, { enabled: !targetUser.enabled });
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 404) return fail(404, { message: 'User not found' });
+			return fail(500, { message: 'Internal server error' });
+		}
 
 		return { success: true };
 	},
@@ -238,18 +221,15 @@ export const actions: Actions = {
 			return fail(400, { message: 'Cannot delete your own account' });
 		}
 
-		// Prevent deleting admin users
-		const [targetUser] = await db
-			.select({ role: userTable.role })
-			.from(userTable)
-			.where(eq(userTable.id, userId))
-			.limit(1);
-
-		if (targetUser?.role === 'admin') {
-			return fail(400, { message: 'Cannot delete an admin user' });
+		try {
+			await deleteUser(userId);
+		} catch (err) {
+			if (err instanceof ApiError) {
+				if (err.status === 404) return fail(404, { message: 'User not found' });
+				if (err.status === 400) return fail(400, { message: err.message });
+			}
+			return fail(500, { message: 'Internal server error' });
 		}
-
-		await db.delete(userTable).where(eq(userTable.id, userId));
 
 		return { success: true };
 	}

@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
-import { lucia } from '$lib/server/auth';
+import { SESSION_COOKIE_NAME } from '$lib/server/auth';
+import { validateSession } from '$lib/server/api';
 import { initLogger, Log } from '$lib/server/logger';
 
 // Initialize dashboard logger
@@ -13,7 +14,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		'unknown';
 	Log('HTTP', `${event.request.method} ${event.url.pathname} from ${ip}`);
 
-	const sessionId = event.cookies.get(lucia.sessionCookieName);
+	const sessionId = event.cookies.get(SESSION_COOKIE_NAME);
 
 	if (!sessionId) {
 		event.locals.user = null;
@@ -21,40 +22,31 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const { session, user } = await lucia.validateSession(sessionId);
+	const result = await validateSession(sessionId).catch((err) => {
+		Log('AUTH', `Session validation error: ${err?.message ?? err}`);
+		return null;
+	});
 
-	if (session && session.fresh) {
-		const sessionCookie = lucia.createSessionCookie(session.id);
-		event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
-			...sessionCookie.attributes
-		});
+	if (!result) {
+		Log('AUTH', `Invalid/expired session from ip=${ip}`);
+		event.cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
+		event.locals.user = null;
+		event.locals.session = null;
+		return resolve(event);
 	}
 
-	if (!session) {
-		Log('AUTH', `Invalid session from ip=${ip}`);
-		const sessionCookie = lucia.createBlankSessionCookie();
-		event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
-			...sessionCookie.attributes
-		});
-	}
+	const user = result.user;
 
-	// If user is disabled, invalidate their session and clear cookie
-	if (session && user && !user.enabled) {
+	// If user is disabled, clear cookie
+	if (!user.enabled) {
 		Log('AUTH', `Disabled user rejected: username=${user.username} ip=${ip}`);
-		await lucia.invalidateSession(session.id);
-		const sessionCookie = lucia.createBlankSessionCookie();
-		event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
-			...sessionCookie.attributes
-		});
+		event.cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
 		event.locals.user = null;
 		event.locals.session = null;
 		return resolve(event);
 	}
 
 	event.locals.user = user;
-	event.locals.session = session;
+	event.locals.session = sessionId;
 	return resolve(event);
 };

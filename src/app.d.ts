@@ -1,8 +1,10 @@
+import type { DashboardUser } from '$lib/server/auth';
+
 declare global {
 	namespace App {
 		interface Locals {
-			user: import('lucia').User | null;
-			session: import('lucia').Session | null;
+			user: DashboardUser | null;
+			session: string | null;
 		}
 	}
 }
