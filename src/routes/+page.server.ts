@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { listReports } from '$lib/server/api';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
 	const pageSize = Math.min(50, Math.max(10, Number(url.searchParams.get('pageSize')) || 20));
 	const status = url.searchParams.get('status') || '';
@@ -11,7 +11,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		page,
 		pageSize,
 		status: status || undefined,
-		search: search || undefined
+		search: search || undefined,
+		dbEnv: locals.dbEnv
 	});
 
 	return {

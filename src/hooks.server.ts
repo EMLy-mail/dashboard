@@ -14,6 +14,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		'unknown';
 	Log('HTTP', `${event.request.method} ${event.url.pathname} from ${ip}`);
 
+	event.locals.dbEnv = event.cookies.get('db_env') === 'test' ? 'test' : 'prod';
+
 	const sessionId = event.cookies.get(SESSION_COOKIE_NAME);
 
 	if (!sessionId) {

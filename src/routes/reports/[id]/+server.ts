@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { updateStatus, deleteReport, ApiError } from '$lib/server/api';
 import type { BugReportStatus } from '$lib/server/api';
 
-export const PATCH: RequestHandler = async ({ params, request }) => {
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const id = Number(params.id);
 	if (isNaN(id)) throw error(400, 'Invalid report ID');
 
@@ -15,7 +15,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	}
 
 	try {
-		await updateStatus(id, status as BugReportStatus);
+		await updateStatus(id, status as BugReportStatus, locals.dbEnv);
 	} catch (err) {
 		if (err instanceof ApiError && err.status === 404) throw error(404, 'Report not found');
 		throw error(500, 'Failed to update status');
@@ -24,12 +24,12 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	return json({ success: true });
 };
 
-export const DELETE: RequestHandler = async ({ params }) => {
+export const DELETE: RequestHandler = async ({ params, locals }) => {
 	const id = Number(params.id);
 	if (isNaN(id)) throw error(400, 'Invalid report ID');
 
 	try {
-		await deleteReport(id);
+		await deleteReport(id, locals.dbEnv);
 	} catch (err) {
 		if (err instanceof ApiError && err.status === 404) throw error(404, 'Report not found');
 		throw error(500, 'Failed to delete report');

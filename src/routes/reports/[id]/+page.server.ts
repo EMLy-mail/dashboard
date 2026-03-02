@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	let result;
 	try {
-		result = await getReport(id);
+		result = await getReport(id, locals.dbEnv);
 	} catch (err) {
 		if (err instanceof ApiError && err.status === 404) throw error(404, 'Report not found');
 		throw error(500, 'Failed to load report');

@@ -11,10 +11,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		redirect(302, '/login');
 	}
 
-	const newCount = await countNewReports().catch(() => 0);
+	const newCount = await countNewReports(locals.dbEnv).catch(() => 0);
 
 	return {
 		newCount,
-		user: locals.user
+		user: locals.user,
+		dbEnv: locals.dbEnv
 	};
 };

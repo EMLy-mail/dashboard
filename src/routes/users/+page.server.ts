@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		redirect(302, '/');
 	}
 
-	const users = await listUsers();
+	const users = await listUsers(locals.dbEnv);
 	return { users };
 };
 
@@ -85,7 +85,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await createUser({ username, displayname, password, role: role as 'admin' | 'user' });
+			await createUser({ username, displayname, password, role: role as 'admin' | 'user' }, locals.dbEnv);
 		} catch (err) {
 			if (err instanceof ApiError) {
 				if (err.status === 409) return fail(400, { message: 'Username already exists' });
@@ -111,7 +111,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await updateUser(userId, { displayname });
+			await updateUser(userId, { displayname }, locals.dbEnv);
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 404) return fail(404, { message: 'User not found' });
 			return fail(500, { message: 'Internal server error' });
@@ -153,7 +153,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await resetPassword(userId, newPassword);
+			await resetPassword(userId, newPassword, locals.dbEnv);
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 404) return fail(404, { message: 'User not found' });
 			return fail(500, { message: 'Internal server error' });
@@ -181,7 +181,7 @@ export const actions: Actions = {
 		// Fetch current user list to find the target user's current enabled state and role
 		let users;
 		try {
-			users = await listUsers();
+			users = await listUsers(locals.dbEnv);
 		} catch {
 			return fail(500, { message: 'Internal server error' });
 		}
@@ -196,7 +196,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await updateUser(userId, { enabled: !targetUser.enabled });
+			await updateUser(userId, { enabled: !targetUser.enabled }, locals.dbEnv);
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 404) return fail(404, { message: 'User not found' });
 			return fail(500, { message: 'Internal server error' });
@@ -223,7 +223,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await deleteUser(userId);
+			await deleteUser(userId, locals.dbEnv);
 		} catch (err) {
 			console.log("Error deleting user:", err);
 			if (err instanceof ApiError) {

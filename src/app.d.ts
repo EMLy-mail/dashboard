@@ -5,6 +5,7 @@ declare global {
 		interface Locals {
 			user: DashboardUser | null;
 			session: string | null;
+			dbEnv: 'prod' | 'test';
 		}
 	}
 }
