@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { statusColors, statusLabels, formatDate, formatBytes } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
 	import {
 		ArrowLeft,
 		Download,
@@ -55,7 +56,14 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ status: newStatus })
 			});
-			if (res.ok) await invalidateAll();
+			if (res.ok) {
+				await invalidateAll();
+				toast.success('Status updated successfully');
+			} else {
+				toast.error('Failed to update status');
+			}
+		} catch {
+			toast.error('Failed to update status');
 		} finally {
 			statusUpdating = false;
 		}
@@ -65,7 +73,13 @@
 		deleting = true;
 		try {
 			const res = await fetch(`/reports/${data.report.id}`, { method: 'DELETE' });
-			if (res.ok) goto('/');
+			if (res.ok) {
+				goto('/');
+			} else {
+				toast.error('Failed to delete report');
+			}
+		} catch {
+			toast.error('Failed to delete report');
 		} finally {
 			deleting = false;
 		}

@@ -7,6 +7,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { Separator } from '$lib/components/ui/separator';
+	import { Toaster } from '$lib/components/ui/sonner';
 	import { presence } from '$lib/stores/presence.svelte';
 
 	let { children, data } = $props();
@@ -25,6 +26,8 @@
 		presence.disconnect();
 	});
 </script>
+
+<Toaster />
 
 {#if !data.user}
 	{@render children()}

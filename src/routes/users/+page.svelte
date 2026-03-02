@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { formatDate } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
 	import { Trash2, UserPlus, Pencil, KeyRound, Check, X, ShieldOff, ShieldCheck } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -140,7 +141,18 @@
 							{:else}
 								<div class="flex items-center gap-1">
 									{#if user.role !== 'admin'}
-										<form method="POST" action="?/toggleEnabled" use:enhance>
+										<form method="POST" action="?/toggleEnabled" use:enhance={() => {
+										return async ({ result, update }) => {
+											if (result.type === 'success') {
+												toast.success('User status updated');
+											} else if (result.type === 'failure') {
+												toast.error(result.data?.message ?? 'Failed to update user status');
+											} else if (result.type === 'error') {
+												toast.error('Failed to update user status');
+											}
+											await update();
+										};
+									}}>
 											<input type="hidden" name="userId" value={user.id} />
 											<Button
 												type="submit"
@@ -222,6 +234,11 @@
 						password = '';
 						confirmPassword = '';
 						role = 'user';
+						toast.success('User created successfully');
+					} else if (result.type === 'failure') {
+						toast.error(result.data?.message ?? 'Failed to create user');
+					} else if (result.type === 'error') {
+						toast.error('Failed to create user');
 					}
 					await update();
 				};
@@ -354,6 +371,11 @@
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						resetDialogOpen = false;
+						toast.success('Password reset successfully');
+					} else if (result.type === 'failure') {
+						toast.error(result.data?.message ?? 'Failed to reset password');
+					} else if (result.type === 'error') {
+						toast.error('Failed to reset password');
 					}
 					await update();
 				};
@@ -442,6 +464,11 @@
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						displaynameDialogOpen = false;
+						toast.success('Display name updated');
+					} else if (result.type === 'failure') {
+						toast.error(result.data?.message ?? 'Failed to update display name');
+					} else if (result.type === 'error') {
+						toast.error('Failed to update display name');
 					}
 					await update();
 				};
@@ -492,6 +519,11 @@
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						deleteDialogOpen = false;
+						toast.success('User deleted');
+					} else if (result.type === 'failure') {
+						toast.error(result.data?.message ?? 'Failed to delete user');
+					} else if (result.type === 'error') {
+						toast.error('Failed to delete user');
 					}
 					await update();
 				};

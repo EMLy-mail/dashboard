@@ -1,4 +1,4 @@
-import { SERVER_URL, SERVER_ADMIN_KEY } from '$env/static/private';
+import { SERVER_URL, API_KEY, ADMIN_KEY } from '$env/static/private';
 
 export type BugReportStatus = 'new' | 'in_review' | 'resolved' | 'closed';
 
@@ -70,7 +70,8 @@ export interface User {
 function baseHeaders(sessionId?: string): Record<string, string> {
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
-		'X-Admin-Key': SERVER_ADMIN_KEY
+		'X-Api-Key': API_KEY,
+		'X-Admin-Key': ADMIN_KEY
 	};
 	if (sessionId) {
 		headers['X-Session-Token'] = sessionId;
@@ -83,6 +84,7 @@ async function apiFetch<T>(
 	options: RequestInit & { sessionId?: string } = {}
 ): Promise<T> {
 	const { sessionId, ...fetchOptions } = options;
+
 	const res = await fetch(`${SERVER_URL}${path}`, {
 		...fetchOptions,
 		headers: {
@@ -177,7 +179,8 @@ export async function deleteReport(id: number): Promise<void> {
 export async function downloadZip(id: number): Promise<Response> {
 	const res = await fetch(`${SERVER_URL}/api/admin/bug-reports/${id}/download`, {
 		headers: {
-			'X-Admin-Key': SERVER_ADMIN_KEY
+			'X-Admin-Key': ADMIN_KEY,
+			'X-Api-Key': API_KEY
 		}
 	});
 	if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
@@ -187,7 +190,8 @@ export async function downloadZip(id: number): Promise<Response> {
 export async function getFile(reportId: number, fileId: number): Promise<Response> {
 	const res = await fetch(`${SERVER_URL}/api/admin/bug-reports/${reportId}/files/${fileId}`, {
 		headers: {
-			'X-Admin-Key': SERVER_ADMIN_KEY
+			'X-Admin-Key': ADMIN_KEY,
+			'X-Api-Key': API_KEY
 		}
 	});
 	if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
@@ -229,5 +233,15 @@ export async function resetPassword(id: string, password: string): Promise<void>
 }
 
 export async function deleteUser(id: string): Promise<void> {
-	await apiFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+	try {		
+		await apiFetch(`/api/admin/users/${id}`, {
+			method: 'DELETE'
+		});
+	} catch (err) {
+		console.log("Error in deleteUser API call:", err);
+		if (err instanceof ApiError && err.status === 400) {
+			throw new ApiError(400, err.message);
+		}
+		throw err;
+	}
 }

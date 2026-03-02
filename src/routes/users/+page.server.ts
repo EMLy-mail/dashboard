@@ -206,6 +206,7 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ request, locals }) => {
+		console.log(locals.user)
 		if (!locals.user || locals.user.role !== 'admin') {
 			return fail(403, { message: 'Unauthorized' });
 		}
@@ -224,6 +225,7 @@ export const actions: Actions = {
 		try {
 			await deleteUser(userId);
 		} catch (err) {
+			console.log("Error deleting user:", err);
 			if (err instanceof ApiError) {
 				if (err.status === 404) return fail(404, { message: 'User not found' });
 				if (err.status === 400) return fail(400, { message: err.message });
