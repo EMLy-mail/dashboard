@@ -15,6 +15,7 @@
 
     async function toggleEnv() {
         const next = data.dbEnv === "prod" ? "test" : "prod";
+        console.log("toggling env to", next);
         await fetch("/api/env", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
