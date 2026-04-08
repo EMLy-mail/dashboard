@@ -1,6 +1,8 @@
 <script lang="ts">
     import { goto, invalidateAll } from "$app/navigation";
+    import { page } from "$app/stores";
     import { statusColors, statusLabels, formatDate } from "$lib/utils";
+    import { toast } from "svelte-sonner";
     import {
         Paperclip,
         RefreshCcw,
@@ -13,6 +15,13 @@
 
     let { data } = $props();
     let refreshing = $state(false);
+
+    $effect(() => {
+        if ($page.url.searchParams.has("welcome")) {
+            toast.success("Welcome back!");
+            goto("/", { replaceState: true });
+        }
+    });
 
     async function refreshReports() {
         refreshing = true;

@@ -122,7 +122,7 @@
                                         action="/logout"
                                         use:enhance
                                     >
-                                        <button type="submit" title="Sign out">
+                                        <button type="submit" title="Sign out" class="cursor-pointer">
                                             <LogOut class="ml-auto size-4" />
                                         </button>
                                     </form>

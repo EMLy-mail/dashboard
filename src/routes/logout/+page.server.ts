@@ -19,6 +19,6 @@ export const actions: Actions = {
 
 		cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
 
-		redirect(302, '/login');
+		redirect(302, '/login?loggedOut=1');
 	}
 };

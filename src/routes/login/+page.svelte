@@ -1,9 +1,19 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { Bug, Loader2 } from 'lucide-svelte';
+	import { toast } from 'svelte-sonner';
 
 	let { form } = $props();
 	let submitting = $state(false);
+
+	$effect(() => {
+		if ($page.url.searchParams.has('loggedOut')) {
+			toast.success('Logged out successfully');
+			goto('/login', { replaceState: true });
+		}
+	});
 </script>
 
 <div class="flex min-h-screen items-center justify-center bg-background">
