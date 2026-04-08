@@ -10,34 +10,29 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Strip "https://" from the server URL to get the registry hostname
-      - name: Resolve registry host
-        id: reg
-        run: |
-          host=$(echo "${{ gitea.server_url }}" | sed 's|https://||;s|http://||;s|/||g')
-          echo "host=$host" >> $GITEA_OUTPUT
-          echo "image=$host/${{ gitea.repository }}" >> $GITEA_OUTPUT
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Gitea registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ steps.reg.outputs.host }}
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.reg.outputs.image }}
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
