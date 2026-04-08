@@ -2,117 +2,51 @@
     import { goto, invalidateAll } from "$app/navigation";
     import { page } from "$app/stores";
     import { statusColors, statusLabels, formatDate } from "$lib/utils";
+    import { toast } from "svelte-sonner";
     import {
-        Search,
-        ChevronLeft,
-        ChevronRight,
-        Filter,
         Paperclip,
         RefreshCcw,
         Inbox,
-        Upload,
+        Loader2,
     } from "lucide-svelte";
     import { Button } from "$lib/components/ui/button";
-    import { Input } from "$lib/components/ui/input";
     import * as Table from "$lib/components/ui/table";
-    import * as Select from "$lib/components/ui/select";
     import * as Empty from "$lib/components/ui/empty";
-    import * as Dialog from "$lib/components/ui/dialog";
 
     let { data } = $props();
-
-    let searchInput = $state("");
-    let statusFilter = $state("");
-
-    const statusOptions = [
-        { value: "new", label: "New" },
-        { value: "in_review", label: "In Review" },
-        { value: "resolved", label: "Resolved" },
-        { value: "closed", label: "Closed" },
-    ];
+    let refreshing = $state(false);
 
     $effect(() => {
-        searchInput = data.filters.search;
-        statusFilter = data.filters.status;
+        if ($page.url.searchParams.has("welcome")) {
+            toast.success("Welcome back!");
+            goto("/", { replaceState: true });
+        }
     });
 
-    function applyFilters() {
-        const params = new URLSearchParams();
-        if (searchInput) params.set("search", searchInput);
-        if (statusFilter) params.set("status", statusFilter);
-        params.set("page", "1");
-        goto(`/?${params.toString()}`);
-    }
-
-    function goToPage(p: number) {
-        const params = new URLSearchParams($page.url.searchParams);
-        params.set("page", String(p));
-        goto(`/?${params.toString()}`);
-    }
-
-    function clearFilters() {
-        searchInput = "";
-        statusFilter = "";
-        goto("/");
-    }
-
     async function refreshReports() {
+        refreshing = true;
         try {
             await invalidateAll();
         } catch (err) {
             console.error("Failed to refresh reports:", err);
+        } finally {
+            refreshing = false;
         }
     }
 </script>
 
 <div class="space-y-4">
-    <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-3">
-        <div class="relative flex-1 min-w-50 max-w-sm">
-            <Search
-                class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-                type="text"
-                placeholder="Search hostname, user, name, email..."
-                bind:value={searchInput}
-                onkeydown={(e) => e.key === "Enter" && applyFilters()}
-                class="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-        </div>
-        <Select.Root
-            type="single"
-            bind:value={statusFilter}
-            onValueChange={() => applyFilters()}
-        >
-            <Select.Trigger class="w-37.5">
-                {statusOptions.find((o) => o.value === statusFilter)?.label ||
-                    "All statuses"}
-            </Select.Trigger>
-            <Select.Content>
-                <Select.Item value="" label="All statuses" />
-                {#each statusOptions as option}
-                    <Select.Item value={option.value} label={option.label} />
-                {/each}
-            </Select.Content>
-        </Select.Root>
-        <Button onclick={applyFilters}>
-            <Filter class="h-4 w-4" />
-            Filter
+    <!-- Toolbar -->
+    <div class="flex items-center justify-end">
+        <Button onclick={refreshReports} disabled={refreshing} style="cursor: pointer;">
+            {#if refreshing}
+                <Loader2 class="h-4 w-4 animate-spin" />
+                Refreshing...
+            {:else}
+                <RefreshCcw class="h-4 w-4" />
+                Refresh
+            {/if}
         </Button>
-        <Button onclick={refreshReports} style="cursor: pointer;">
-            <RefreshCcw class="h-4 w-4" />
-            Refresh
-        </Button>
-        {#if data.filters.search || data.filters.status}
-            <Button
-                variant="outline"
-                onclick={clearFilters}
-                style="cursor: pointer;"
-            >
-                Clear
-            </Button>
-        {/if}
     </div>
 
     <!-- Table -->
@@ -125,23 +59,19 @@
                     </Empty.Media>
                     <Empty.Title>No reports found</Empty.Title>
                     <Empty.Description>
-                        There are no bug reports matching your current filters.
+                        There are no bug reports yet.
                     </Empty.Description>
                 </Empty.Header>
-                {#if data.filters.search || data.filters.status}
-                    <Empty.Content>
-                        <Button variant="outline" onclick={clearFilters}>
-                            Clear Filters
-                        </Button>
-                    </Empty.Content>
-                {:else}
-                    <Empty.Content>
-                        <Button variant="outline" onclick={refreshReports}>
+                <Empty.Content>
+                    <Button variant="outline" onclick={refreshReports} disabled={refreshing}>
+                        {#if refreshing}
+                            <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                        {:else}
                             <RefreshCcw class="mr-2 h-4 w-4" />
-                            Refresh
-                        </Button>
-                    </Empty.Content>
-                {/if}
+                        {/if}
+                        Refresh
+                    </Button>
+                </Empty.Content>
             </Empty.Root>
         </div>
     {:else}
@@ -205,53 +135,6 @@
                     {/each}
                 </Table.Body>
             </Table.Root>
-        </div>
-    {/if}
-
-    <!-- Pagination -->
-    {#if data.pagination.totalPages > 1}
-        <div class="flex items-center justify-between">
-            <p class="text-sm text-muted-foreground">
-                Showing {(data.pagination.page - 1) * data.pagination.pageSize +
-                    1} to {Math.min(
-                    data.pagination.page * data.pagination.pageSize,
-                    data.pagination.total,
-                )} of {data.pagination.total} reports
-            </p>
-            <div class="flex items-center gap-1">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onclick={() => goToPage(data.pagination.page - 1)}
-                    disabled={data.pagination.page <= 1}
-                >
-                    <ChevronLeft class="h-4 w-4" />
-                </Button>
-                {#each Array.from({ length: data.pagination.totalPages }, (_, i) => i + 1) as p}
-                    {#if p === 1 || p === data.pagination.totalPages || (p >= data.pagination.page - 1 && p <= data.pagination.page + 1)}
-                        <Button
-                            variant={p === data.pagination.page
-                                ? "default"
-                                : "outline"}
-                            size="icon"
-                            onclick={() => goToPage(p)}
-                        >
-                            {p}
-                        </Button>
-                    {:else if p === data.pagination.page - 2 || p === data.pagination.page + 2}
-                        <span class="px-1 text-muted-foreground">...</span>
-                    {/if}
-                {/each}
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onclick={() => goToPage(data.pagination.page + 1)}
-                    disabled={data.pagination.page >=
-                        data.pagination.totalPages}
-                >
-                    <ChevronRight class="h-4 w-4" />
-                </Button>
-            </div>
         </div>
     {/if}
 </div>

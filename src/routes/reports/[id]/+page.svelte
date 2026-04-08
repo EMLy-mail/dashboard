@@ -190,7 +190,7 @@
                     <!-- Delete -->
                     <Button
                         variant="destructive"
-                        class="gap-1.5"
+                        class="gap-1.5 cursor-pointer transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98]"
                         onclick={() => (showDeleteDialog = true)}
                     >
                         <Trash2 class="h-4 w-4" />

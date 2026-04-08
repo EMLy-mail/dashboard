@@ -74,14 +74,7 @@ class PresenceStore {
 			const reportMatch = this.currentPath.match(/^\/reports\/(\d+)/);
 			const reportId = reportMatch ? Number(reportMatch[1]) : null;
 
-			await fetch('/api/presence/heartbeat', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					currentPath: this.currentPath,
-					reportId
-				})
-			});
+			
 		} catch {
 			// ignore heartbeat failures
 		}

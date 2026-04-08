@@ -12,6 +12,9 @@
 
 	let { data, form } = $props();
 
+	// Global action lock — true while any form action is in flight
+	let actionPending = $state(false);
+
 	// Create user dialog visibility
 	let showCreateForm = $state(false);
 
@@ -90,7 +93,7 @@
 </script>
 
 <div class="space-y-6">
-	<Button onclick={() => (showCreateForm = true)}>
+	<Button onclick={() => (showCreateForm = true)} disabled={actionPending}>
 		<UserPlus class="h-4 w-4" />
 		Create User
 	</Button>
@@ -142,6 +145,7 @@
 								<div class="flex items-center gap-1">
 									{#if user.role !== 'admin'}
 										<form method="POST" action="?/toggleEnabled" use:enhance={() => {
+										actionPending = true;
 										return async ({ result, update }) => {
 											if (result.type === 'success') {
 												toast.success('User status updated');
@@ -151,6 +155,7 @@
 												toast.error('Failed to update user status');
 											}
 											await update();
+											actionPending = false;
 										};
 									}}>
 											<input type="hidden" name="userId" value={user.id} />
@@ -158,6 +163,7 @@
 												type="submit"
 												variant="ghost"
 												size="icon"
+												disabled={actionPending}
 												class="h-8 w-8 {user.enabled
 													? 'text-orange-400 hover:text-orange-500 hover:bg-orange-500/10'
 													: 'text-green-400 hover:text-green-500 hover:bg-green-500/10'}"
@@ -175,6 +181,7 @@
 										variant="ghost"
 										size="icon"
 										class="h-8 w-8"
+										disabled={actionPending}
 										onclick={() => openResetDialog(user.id, user.username)}
 										title="Change Password"
 									>
@@ -184,6 +191,7 @@
 										variant="ghost"
 										size="icon"
 										class="h-8 w-8"
+										disabled={actionPending}
 										onclick={() => openDisplaynameDialog(user)}
 										title="Change Display Name"
 									>
@@ -194,6 +202,7 @@
 											variant="ghost"
 											size="icon"
 											class="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+											disabled={actionPending}
 											onclick={() => openDeleteDialog(user)}
 											title="Delete User"
 										>
@@ -228,6 +237,7 @@
 			method="POST"
 			action="?/create"
 			use:enhance={() => {
+				actionPending = true;
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						showCreateForm = false;
@@ -241,6 +251,7 @@
 						toast.error('Failed to create user');
 					}
 					await update();
+					actionPending = false;
 				};
 			}}
 			class="space-y-4"
@@ -368,6 +379,7 @@
 			method="POST"
 			action="?/resetPassword"
 			use:enhance={() => {
+				actionPending = true;
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						resetDialogOpen = false;
@@ -378,6 +390,7 @@
 						toast.error('Failed to reset password');
 					}
 					await update();
+					actionPending = false;
 				};
 			}}
 			class="space-y-4"
@@ -461,6 +474,7 @@
 			method="POST"
 			action="?/updateDisplayname"
 			use:enhance={() => {
+				actionPending = true;
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						displaynameDialogOpen = false;
@@ -471,6 +485,7 @@
 						toast.error('Failed to update display name');
 					}
 					await update();
+					actionPending = false;
 				};
 			}}
 			class="space-y-4"
@@ -516,6 +531,7 @@
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel onclick={() => (deleteDialogOpen = false)}>Cancel</AlertDialog.Cancel>
 			<form method="POST" action="?/delete" use:enhance={() => {
+				actionPending = true;
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						deleteDialogOpen = false;
@@ -526,6 +542,7 @@
 						toast.error('Failed to delete user');
 					}
 					await update();
+					actionPending = false;
 				};
 			}}>
 				<input type="hidden" name="userId" value={selectedUser?.id} />

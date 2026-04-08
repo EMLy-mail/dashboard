@@ -1,8 +1,19 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { Bug } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { Bug, Loader2 } from 'lucide-svelte';
+	import { toast } from 'svelte-sonner';
 
 	let { form } = $props();
+	let submitting = $state(false);
+
+	$effect(() => {
+		if ($page.url.searchParams.has('loggedOut')) {
+			toast.success('Logged out successfully');
+			goto('/login', { replaceState: true });
+		}
+	});
 </script>
 
 <div class="flex min-h-screen items-center justify-center bg-background">
@@ -19,7 +30,13 @@
 			</div>
 		{/if}
 
-		<form method="POST" use:enhance class="space-y-4">
+		<form method="POST" use:enhance={() => {
+			submitting = true;
+			return async ({ update }) => {
+				await update();
+				submitting = false;
+			};
+		}} class="space-y-4">
 			<div>
 				<label for="username" class="mb-1 block text-sm font-medium text-foreground">
 					Username
@@ -52,9 +69,15 @@
 
 			<button
 				type="submit"
-				class="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+				disabled={submitting}
+				class="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
 			>
-				Sign in
+				{#if submitting}
+					<Loader2 class="h-4 w-4 animate-spin" />
+					Signing in...
+				{:else}
+					Sign in
+				{/if}
 			</button>
 		</form>
 	</div>

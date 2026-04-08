@@ -96,7 +96,7 @@ async function apiFetch<T>(
   if (!res.ok) {
     const body = await res
       .json()
-      .catch(() => ({ message: `HTTP ${res.status}` }));
+      .catch(() => ({ message: `HTTP ${res.status} for url ${SERVER_URL}${path}` }));
     throw new ApiError(res.status, body.message ?? `HTTP ${res.status}`);
   }
 
@@ -154,7 +154,7 @@ export async function listReports(opts: {
   params.set("pageSize", String(opts.pageSize));
   if (opts.status) params.set("status", opts.status);
   if (opts.search) params.set("search", opts.search);
-  return apiFetch(`/api/admin/bug-reports?${params}`, { dbEnv: opts.dbEnv });
+  return apiFetch(`/api/bug-reports?${params}`, { dbEnv: opts.dbEnv });
 }
 
 export async function countNewReports(dbEnv?: string): Promise<number> {
@@ -166,7 +166,11 @@ export async function getReport(
   id: number,
   dbEnv?: string,
 ): Promise<{ report: BugReport; files: BugReportFile[] }> {
-  return apiFetch(`/api/admin/bug-reports/${id}`, { dbEnv });
+  return apiFetch(`/api/bug-reports/${id}`, { dbEnv });
+}
+
+export async function getReportFiles(reportId: number, dbEnv?: string): Promise<BugReportFile[]> {
+  return apiFetch(`/api/bug-reports/${reportId}/files`, { dbEnv });
 }
 
 export async function updateStatus(
@@ -174,9 +178,9 @@ export async function updateStatus(
   status: BugReportStatus,
   dbEnv?: string,
 ): Promise<void> {
-  await apiFetch(`/api/admin/bug-reports/${id}/status`, {
+  await apiFetch(`/api/bug-reports/${id}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: status,
     dbEnv,
   });
 }
@@ -212,7 +216,7 @@ export async function getFile(
   if (dbEnv) headers["X-Db-Env"] = dbEnv;
 
   const res = await fetch(
-    `${SERVER_URL}/api/admin/bug-reports/${reportId}/files/${fileId}`,
+    `${SERVER_URL}/api/bug-reports/${reportId}/files/${fileId}`,
     { headers },
   );
   if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);

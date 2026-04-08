@@ -1,28 +1,16 @@
 <script lang="ts">
     import "../app.css";
-    import { page } from "$app/stores";
+    import { page, navigating } from "$app/stores";
     import { enhance } from "$app/forms";
     import { onMount, onDestroy } from "svelte";
-    import { Bug, LayoutDashboard, Users, LogOut } from "lucide-svelte";
+    import { Bug, LayoutDashboard, Users, LogOut, Loader2 } from "lucide-svelte";
     import * as Sidebar from "$lib/components/ui/sidebar/index.js";
     import * as Tooltip from "$lib/components/ui/tooltip";
     import { Separator } from "$lib/components/ui/separator";
     import { Toaster } from "$lib/components/ui/sonner";
     import { presence } from "$lib/stores/presence.svelte";
-    import { invalidateAll } from "$app/navigation";
 
     let { children, data } = $props();
-
-    async function toggleEnv() {
-        const next = data.dbEnv === "prod" ? "test" : "prod";
-        console.log("toggling env to", next);
-        await fetch("/api/env", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ env: next }),
-        });
-        await invalidateAll();
-    }
 
     const otherActiveUsers = $derived(
         presence.activeUsers.filter((u) => u.userId !== data.user?.id),
@@ -37,13 +25,19 @@
     onDestroy(() => {
         presence.disconnect();
     });
-
-    $effect(() => {
-        console.log("current path", $page.url.pathname);
-    });
 </script>
 
+<svelte:head>
+    <title>EMLy Dashboard</title>
+</svelte:head>
+
 <Toaster />
+
+{#if $navigating}
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+        <Loader2 class="h-8 w-8 animate-spin text-primary" />
+    </div>
+{/if}
 
 {#if !data.user}
     {@render children()}
@@ -128,7 +122,7 @@
                                         action="/logout"
                                         use:enhance
                                     >
-                                        <button type="submit" title="Sign out">
+                                        <button type="submit" title="Sign out" class="cursor-pointer">
                                             <LogOut class="ml-auto size-4" />
                                         </button>
                                     </form>
@@ -205,47 +199,6 @@
                                 >
                             {/if}
                         </div>
-                    {/if}
-                    {#if data.user.role === "admin"}
-                        <Tooltip.Root>
-                            <Tooltip.Trigger>
-                                <button
-                                    onclick={toggleEnv}
-                                    disabled={$page.url.pathname !== "/"}
-                                    class="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors {data.dbEnv ===
-                                    'test'
-                                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                                        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'}
-                                    {$page.url.pathname !== '/'
-                                        ? 'cursor-not-allowed opacity-35'
-                                        : {}}"
-                                >
-                                    <span
-                                        class="h-1.5 w-1.5 rounded-full {data.dbEnv ===
-                                        'test'
-                                            ? 'bg-amber-400'
-                                            : 'bg-emerald-400'}"
-                                    ></span>
-                                    {data.dbEnv === "test"
-                                        ? "TEST DB"
-                                        : "PROD DB"}
-                                </button>
-                            </Tooltip.Trigger>
-                            <Tooltip.Content>
-                                {#if $page.url.pathname === "/"}
-                                    <p>
-                                        Click to switch to {data.dbEnv ===
-                                        "test"
-                                            ? "production"
-                                            : "test"} database
-                                    </p>
-                                {:else}
-                                    <p>
-                                        You can't switch databases on this page.
-                                    </p>
-                                {/if}
-                            </Tooltip.Content>
-                        </Tooltip.Root>
                     {/if}
                     {#if data.newCount > 0}
                         <div
