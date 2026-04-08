@@ -1,6 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { error } from "@sveltejs/kit";
-import { getReport, ApiError } from "$lib/server/api";
+import { getReport, ApiError, getReportFiles } from "$lib/server/api";
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   const id = Number(params.id);
@@ -8,7 +8,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   let result;
   try {
-    result = await getReport(id, locals.dbEnv);
+    let reportResult = await getReport(id, locals.dbEnv);
+    let filesResult = await getReportFiles(id, locals.dbEnv);
+
+    result = {
+      report: reportResult.report,
+      files: filesResult,
+    };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404)
       throw error(404, "Report not found");
